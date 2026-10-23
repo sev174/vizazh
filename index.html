@@ -1,0 +1,727 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Визаж: записи и учёт</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+// Данные проекта Supabase (Project Settings -> API Keys).
+// Publishable-ключ публичный по задумке: данные защищает вход по паролю и правила в базе.
+// Если оставить поля пустыми, страница работает в демо-режиме (данные только в этом браузере).
+window.APP_CONFIG = {
+  supabaseUrl: "https://jjgnmxuvbveckxgfsckp.supabase.co",
+  supabaseAnonKey: "sb_publishable_OkQ6X6miPnLYjS6udHh5Uw_rVL6owx7",
+  currency: "RUB",
+};
+</script>
+<style>
+:root {
+  --bg: #faf4f1; --glow: #f4dde2; --surface: #fff; --text: #3b2f33; --muted: #8f7d82; --line: #eddfdc;
+  --accent: #a24b6b; --accent-2: #c9718d; --accent-soft: #f7e3e9; --gold: #c19a5b;
+  --income: #3d8665; --income-bg: #e4f2ea; --expense: #bf5640; --expense-bg: #fbe9e4;
+  --shadow: 0 1px 2px rgba(80, 40, 50, .05), 0 8px 24px rgba(80, 40, 50, .07);
+  --serif: "Cormorant Garamond", Georgia, "Times New Roman", serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #1b1517; --glow: #3a2230; --surface: #261d20; --text: #f4e9e6; --muted: #a89599; --line: #3a2d31;
+    --accent: #e08aa8; --accent-2: #f0a3bb; --accent-soft: #3d2530; --gold: #d8b574;
+    --income: #62c496; --income-bg: #1d3329; --expense: #f08a73; --expense-bg: #3d231f;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px rgba(0, 0, 0, .25);
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; color: var(--text); font: 15px/1.45 "Manrope", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: radial-gradient(900px 420px at 90% -8%, var(--glow), transparent 65%), var(--bg); background-attachment: fixed; min-height: 100vh; }
+.wrap { max-width: 1120px; margin: 0 auto; padding: 20px 16px 40px; }
+header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+.brand { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
+.logo { width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; flex: none;
+  background: linear-gradient(135deg, var(--accent-2), var(--accent)); box-shadow: 0 4px 14px rgba(162, 75, 107, .35); }
+.logo svg { width: 22px; height: 22px; fill: #fff; }
+h1 { font-family: var(--serif); font-size: 30px; line-height: 1; margin: 0; font-weight: 700; letter-spacing: .01em; }
+h1 small { display: block; font-family: "Manrope", sans-serif; font-size: 12px; font-weight: 500; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin-top: 4px; }
+.status { font-size: 13px; color: var(--muted); }
+.status i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); margin-right: 6px; }
+.status.on i { background: var(--income); box-shadow: 0 0 0 3px var(--income-bg); }
+button, select, input, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+.btn { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 8px 16px; transition: border-color .15s, box-shadow .15s, transform .05s; }
+.btn:hover { border-color: var(--accent-2); }
+.btn:active { transform: translateY(1px); }
+.btn.primary { background: linear-gradient(135deg, var(--accent-2), var(--accent)); border-color: transparent; color: #fff; font-weight: 600; box-shadow: 0 4px 12px rgba(162, 75, 107, .28); }
+.btn.primary:hover { box-shadow: 0 6px 16px rgba(162, 75, 107, .38); }
+.banner { background: var(--accent-soft); border-radius: 12px; padding: 9px 14px; margin-bottom: 14px; font-size: 14px; }
+
+.tabs { display: inline-flex; gap: 4px; padding: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: 999px; margin-bottom: 18px; box-shadow: var(--shadow); }
+.tab { border: 0; background: transparent; padding: 8px 20px; border-radius: 999px; color: var(--muted); font-weight: 500; }
+.tab.on { background: linear-gradient(135deg, var(--accent-2), var(--accent)); color: #fff; font-weight: 600; }
+
+.cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 14px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 14px 18px; box-shadow: var(--shadow); position: relative; overflow: hidden; }
+.card::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--gold); }
+.card.inc::before { background: var(--income); } .card.exp::before { background: var(--expense); }
+.card small { color: var(--muted); display: block; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
+.card b { font-family: var(--serif); font-size: 28px; font-variant-numeric: tabular-nums; line-height: 1.2; }
+.card.inc b { color: var(--income); } .card.exp b { color: var(--expense); }
+
+.toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; align-items: center; }
+.toolbar input, .toolbar select { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 8px 14px; }
+.toolbar .grow { flex: 1; min-width: 140px; }
+
+.sheet { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; box-shadow: var(--shadow); }
+.row { display: grid; grid-template-columns: 140px 112px 1.1fr 130px 1.6fr 90px 36px; border-bottom: 1px solid var(--line); align-items: stretch; }
+.row:last-child { border-bottom: 0; }
+.row.head { background: var(--accent-soft); color: var(--accent); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; }
+.row.head > span { padding: 10px; }
+.row.add { background: var(--accent-soft); }
+.row input, .row select { border: 0; border-right: 1px solid var(--line); border-radius: 0; background: transparent; padding: 10px; min-width: 0; width: 100%; outline: none; }
+.row input:focus, .row select:focus { background: var(--accent-soft); box-shadow: inset 0 0 0 2px var(--accent-2); }
+.row.add input:focus, .row.add select:focus { background: var(--surface); }
+.row .amt { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+.row.income .amt, .row.income .type { color: var(--income); }
+.row.expense .amt, .row.expense .type { color: var(--expense); }
+.row.income .type { background: var(--income-bg); } .row.expense .type { background: var(--expense-bg); }
+.who { padding: 10px; color: var(--muted); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; align-self: center; }
+.del { border: 0; background: transparent; color: var(--muted); }
+.del:hover { color: var(--expense); }
+.add .addbtn { grid-column: span 2; border: 0; background: linear-gradient(135deg, var(--accent-2), var(--accent)); color: #fff; font-weight: 600; }
+.empty { padding: 30px; text-align: center; color: var(--muted); }
+
+.cats { margin-top: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 14px 18px; box-shadow: var(--shadow); }
+.cats h2 { font-family: var(--serif); font-size: 20px; margin: 0 0 8px; }
+.cat { display: grid; grid-template-columns: 150px 1fr 120px; gap: 12px; align-items: center; font-size: 14px; padding: 4px 0; }
+.bar { height: 8px; background: var(--accent-soft); border-radius: 4px; overflow: hidden; }
+.bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--accent-2), var(--accent)); border-radius: 4px; }
+.cat span:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+
+.calbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.calbar .btn { padding: 7px 14px; }
+.calbar h2 { font-family: var(--serif); font-size: 26px; font-weight: 700; margin: 0 6px; min-width: 170px; text-align: center; }
+.calsum { margin-left: auto; color: var(--muted); font-size: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; }
+.cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); background: var(--surface); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; box-shadow: var(--shadow); }
+.cal .dow { padding: 9px 10px; font-size: 11px; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: .1em; background: var(--accent-soft); }
+.cal .cell { min-height: 104px; padding: 6px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); cursor: pointer; overflow: hidden; transition: background .12s; }
+.cal .cell:hover { background: var(--accent-soft); }
+.cal .cell:nth-child(7n) { border-right: 0; }
+.cal .cell.out { opacity: .45; }
+.cal .cell.we .num { color: var(--expense); }
+.cal .cell.sel { box-shadow: inset 0 0 0 2px var(--accent-2); background: var(--accent-soft); }
+.num { font-size: 13px; font-weight: 600; display: inline-block; min-width: 24px; height: 24px; line-height: 24px; text-align: center; margin-bottom: 3px; }
+.cal .cell.today .num { background: linear-gradient(135deg, var(--accent-2), var(--accent)); color: #fff; border-radius: 50%; }
+.chip { display: block; width: 100%; text-align: left; border: 0; border-left: 3px solid var(--accent-2); border-radius: 6px; padding: 3px 6px; margin-bottom: 3px; font-size: 12px; background: var(--accent-soft); color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chip:hover { filter: brightness(.97); }
+.chip.done { background: var(--income-bg); border-left-color: var(--income); }
+.chip.cancelled { background: var(--bg); border-left-color: var(--muted); color: var(--muted); text-decoration: line-through; }
+.more { font-size: 12px; color: var(--muted); }
+.cnt { display: none; font-size: 12px; font-weight: 700; background: var(--accent); color: #fff; border-radius: 9px; padding: 0 6px; }
+.day { margin-top: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 14px 18px; box-shadow: var(--shadow); }
+.dayhead { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.dayhead h3 { margin: 0; font-family: var(--serif); font-size: 24px; }
+.appt { display: grid; grid-template-columns: 110px 1fr auto; gap: 12px; align-items: center; width: 100%; text-align: left; border: 0; border-top: 1px solid var(--line); background: transparent; padding: 11px 4px; border-radius: 0; }
+.appt:hover { background: var(--accent-soft); }
+.appt .t { font-variant-numeric: tabular-nums; color: var(--accent); font-weight: 700; }
+.appt small { color: var(--muted); display: block; }
+.appt > div:last-child { text-align: right; }
+.appt .st { font-size: 12px; font-weight: 600; border-radius: 999px; padding: 2px 10px; background: var(--accent-soft); color: var(--accent); display: inline-block; margin-bottom: 2px; }
+.appt .st.done { background: var(--income-bg); color: var(--income); }
+.appt .st.cancelled { background: var(--bg); color: var(--muted); }
+.appt.cancelled b { text-decoration: line-through; color: var(--muted); }
+
+dialog { border: 1px solid var(--line); border-radius: 20px; padding: 22px; width: min(500px, calc(100vw - 24px)); background: var(--surface); color: var(--text); box-shadow: 0 20px 60px rgba(60, 20, 35, .3); }
+dialog::backdrop { background: rgba(40, 18, 28, .45); backdrop-filter: blur(2px); }
+dialog h3 { font-family: var(--serif); font-size: 26px; margin: 0 0 12px; }
+dialog label { display: block; font-size: 12px; font-weight: 600; letter-spacing: .04em; color: var(--muted); margin-bottom: 10px; }
+dialog input, dialog select, dialog textarea { display: block; width: 100%; margin-top: 4px; border: 1px solid var(--line); background: var(--bg); border-radius: 10px; padding: 9px 11px; font: inherit; color: var(--text); }
+dialog input:focus, dialog select:focus, dialog textarea:focus { outline: none; border-color: var(--accent-2); box-shadow: 0 0 0 3px var(--accent-soft); }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+.dlgbtns { display: flex; gap: 8px; margin-top: 8px; }
+.btn.danger { color: var(--expense); }
+
+.login { max-width: 360px; margin: 12vh auto; background: var(--surface); border: 1px solid var(--line); border-radius: 22px; padding: 30px 26px; box-shadow: var(--shadow); text-align: center; }
+.login .brand { flex-direction: column; margin-bottom: 18px; }
+.login h1 { text-align: center; }
+.login input { width: 100%; border: 1px solid var(--line); background: var(--bg); border-radius: 12px; padding: 11px 13px; margin-bottom: 10px; }
+.login input:focus { outline: none; border-color: var(--accent-2); box-shadow: 0 0 0 3px var(--accent-soft); }
+.login .btn { width: 100%; padding: 11px; }
+.err { color: var(--expense); font-size: 14px; min-height: 20px; margin-bottom: 6px; }
+.toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--expense); color: #fff; padding: 10px 18px; border-radius: 999px; z-index: 5; box-shadow: var(--shadow); }
+[hidden] { display: none !important; }
+
+@media (max-width: 760px) {
+  h1 { font-size: 26px; }
+  header .brand { flex-basis: 100%; }
+  header .status { margin-right: auto; }
+  .tabs { display: flex; width: 100%; }
+  .tab { flex: 1; padding: 8px 6px; white-space: nowrap; font-size: 14px; }
+  .calbar { gap: 6px; }
+  .calbar .btn { padding: 6px 10px; font-size: 13px; flex: none; }
+  .cards { gap: 6px; }
+  .card { padding: 9px 11px 9px 14px; border-radius: 14px; }
+  .card b { font-size: 18px; }
+  .card small { font-size: 10px; }
+  .row.head { display: none; }
+  .row { grid-template-columns: 1fr 1fr; grid-template-areas: "date type" "cat amt" "com com" "who del"; }
+  .del { text-align: right; padding-right: 18px; }
+  .row > :nth-child(1) { grid-area: date; } .row > :nth-child(2) { grid-area: type; }
+  .row > :nth-child(3) { grid-area: cat; } .row > :nth-child(4) { grid-area: amt; }
+  .row > :nth-child(5) { grid-area: com; } .row > :nth-child(6) { grid-area: who; } .row > :nth-child(7) { grid-area: del; }
+  .row input, .row select { border-right: 0; border-bottom: 1px solid var(--line); }
+  .row.add { grid-template-areas: "date type" "cat amt" "com com" "btn btn"; }
+  .row.add .addbtn { grid-area: btn; padding: 12px; }
+  .cat { grid-template-columns: 110px 1fr 90px; }
+  .calbar h2 { font-size: 17px; min-width: 0; flex: 1; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .banner { font-size: 12px; padding: 7px 11px; }
+  .calsum { order: 5; }
+  .dayhead h3 { font-size: 20px; }
+  .dayhead .btn { white-space: nowrap; padding: 7px 13px; flex: none; }
+  .cal .cell { min-height: 56px; padding: 3px; text-align: center; }
+  .cal .chip, .cal .more { display: none; }
+  .cal .cnt { display: inline-block; }
+  .calsum { margin-left: 0; width: 100%; text-align: center; }
+  .appt { grid-template-columns: 1fr auto; }
+  .appt .t { grid-column: 1 / -1; }
+}
+</style>
+</head>
+<body>
+
+<div id="loginView" class="login" hidden>
+  <div class="brand">
+    <span class="logo" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2l2.2 6.3L21 10l-5.2 4 1.8 6.6L12 17l-5.6 3.6L8.2 14 3 10l6.8-1.7z"/></svg></span>
+    <h1>Визаж<small>записи и учёт</small></h1>
+  </div>
+  <form id="loginForm">
+    <input id="loginEmail" type="email" placeholder="Почта" autocomplete="username" required>
+    <input id="loginPass" type="password" placeholder="Пароль" autocomplete="current-password" required>
+    <div class="err" id="loginErr"></div>
+    <button class="btn primary" type="submit">Войти</button>
+  </form>
+</div>
+
+<div id="appView" class="wrap" hidden>
+  <header>
+    <div class="brand">
+      <span class="logo" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2l2.2 6.3L21 10l-5.2 4 1.8 6.6L12 17l-5.6 3.6L8.2 14 3 10l6.8-1.7z"/></svg></span>
+      <h1>Визаж<small>записи и учёт</small></h1>
+    </div>
+    <span class="status" id="status"><i></i><span id="statusText"></span></span>
+    <button class="btn" id="exportBtn">Скачать CSV</button>
+    <button class="btn" id="logoutBtn">Выйти</button>
+  </header>
+  <div class="banner" id="demoBanner" hidden>Демо-режим: данные хранятся только в этом браузере. Чтобы работать вдвоём, подключите Supabase (см. README.md).</div>
+
+  <nav class="tabs">
+    <button class="tab" data-tab="cal">Записи</button>
+    <button class="tab" data-tab="fin">Доходы и расходы</button>
+  </nav>
+
+  <section id="calView" hidden>
+    <div class="calbar">
+      <button class="btn" id="calPrev" aria-label="Предыдущий месяц">‹</button>
+      <h2 id="calTitle"></h2>
+      <button class="btn" id="calNext" aria-label="Следующий месяц">›</button>
+      <button class="btn" id="calToday">Сегодня</button>
+      <span class="calsum" id="calSum"></span>
+    </div>
+    <div class="cal" id="calGrid"></div>
+    <div class="day" id="dayPanel"></div>
+  </section>
+
+  <section id="financeView" hidden>
+  <div class="cards">
+    <div class="card inc"><small>Доходы</small><b id="sumInc">0</b></div>
+    <div class="card exp"><small>Расходы</small><b id="sumExp">0</b></div>
+    <div class="card"><small>Баланс</small><b id="sumBal">0</b></div>
+  </div>
+
+  <div class="toolbar">
+    <select id="monthSel" aria-label="Период"></select>
+    <select id="typeSel" aria-label="Тип">
+      <option value="">Доходы и расходы</option>
+      <option value="income">Только доходы</option>
+      <option value="expense">Только расходы</option>
+    </select>
+    <input id="search" class="grow" type="search" placeholder="Поиск по категории и комментарию">
+  </div>
+
+  <div class="sheet">
+    <div class="row head"><span>Дата</span><span>Тип</span><span>Категория</span><span style="text-align:right">Сумма</span><span>Комментарий</span><span>Кто</span><span></span></div>
+    <form class="row add" id="addForm" autocomplete="off">
+      <input id="aDate" type="date" aria-label="Дата">
+      <select id="aType" class="type" aria-label="Тип"><option value="expense">Расход</option><option value="income">Доход</option></select>
+      <select id="aCat" aria-label="Категория"></select>
+      <input id="aAmt" class="amt" inputmode="decimal" placeholder="Сумма" aria-label="Сумма">
+      <input id="aCom" placeholder="Комментарий" aria-label="Комментарий">
+      <button class="addbtn" type="submit">+ Добавить</button>
+    </form>
+    <div id="list"></div>
+    <div class="empty" id="empty" hidden>Записей нет. Добавьте первую в строке выше.</div>
+  </div>
+
+  <div class="cats" id="catsBox" hidden><h2>Расходы по категориям</h2><div id="catsList"></div></div>
+  </section>
+</div>
+
+<dialog id="apptDlg">
+  <form id="apptForm" autocomplete="off">
+    <h3 id="dTitle">Новая запись</h3>
+    <div class="grid2">
+      <label>Дата<input id="dDate" type="date" required></label>
+      <label>Начало<input id="dTime" type="time" required></label>
+      <label>Длительность, мин<input id="dDur" type="number" min="15" step="15" required></label>
+      <label>Статус<select id="dStatus"><option value="booked">Записана</option><option value="done">Выполнено</option><option value="cancelled">Отменено</option></select></label>
+    </div>
+    <label>Клиентка<input id="dClient" required></label>
+    <div class="grid2">
+      <label>Телефон<input id="dPhone" type="tel"></label>
+      <label>Услуга<input id="dService" list="services"></label>
+    </div>
+    <label>Место<select id="dPlace"><option value="">Не выбрано</option><option>Дом</option><option>Студия</option><option>Выезд</option></select></label>
+    <div class="grid2">
+      <label>Стоимость<input id="dPrice" inputmode="decimal"></label>
+      <label>Предоплата<input id="dPrepaid" inputmode="decimal"></label>
+    </div>
+    <label>Заметка (адрес выезда, пожелания)<textarea id="dNote" rows="2"></textarea></label>
+    <div class="err" id="dErr"></div>
+    <div class="dlgbtns">
+      <button type="button" class="btn danger" id="dDelete">Удалить</button>
+      <span style="flex:1"></span>
+      <button type="button" class="btn" id="dCancel">Закрыть</button>
+      <button type="submit" class="btn primary">Сохранить</button>
+    </div>
+  </form>
+  <datalist id="services"><option value="Макияж дневной"><option value="Макияж вечерний"><option value="Свадебный макияж"><option value="Причёска"><option value="Репетиция образа"><option value="Выездной макияж"></datalist>
+</dialog>
+
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(() => {
+const cfg = window.APP_CONFIG || {};
+const demo = !cfg.supabaseUrl || !cfg.supabaseAnonKey;
+const $ = (id) => document.getElementById(id);
+const CATS = {
+  expense: ["Аренда", "Транспорт", "Косметика", "Расходники", "Оборудование"],
+  income: ["Визаж", "Прочее"],
+};
+const today = () => { const d = new Date(); return new Date(d - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); };
+
+/* ---------- слой данных ---------- */
+function localApi() {
+  const key = (t) => (t === "transactions" ? "family-budget-demo" : "family-budget-demo-" + t);
+  const load = (t) => { try { return JSON.parse(localStorage.getItem(key(t))) || []; } catch { return []; } };
+  const save = (t, rows) => localStorage.setItem(key(t), JSON.stringify(rows));
+  return {
+    async init() { return { name: "Вы" }; },
+    async signIn() {}, async signOut() {},
+    async list(t) { return load(t); },
+    async insert(t, row) {
+      const r = { ...row, id: crypto.randomUUID(), created_at: new Date().toISOString() };
+      save(t, [...load(t), r]); return r;
+    },
+    async update(t, id, patch) { save(t, load(t).map((r) => (r.id === id ? { ...r, ...patch } : r))); },
+    async remove(t, id) { save(t, load(t).filter((r) => r.id !== id)); },
+    subscribe(cb, onStatus) {
+      window.addEventListener("storage", (e) => { if (e.key && e.key.startsWith("family-budget-demo")) cb({ kind: "reload" }); });
+      onStatus(true);
+    },
+  };
+}
+
+function supaApi() {
+  const sb = supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
+  const nameOf = (u) => u.user_metadata?.name || (u.email || "").split("@")[0];
+  // Postgres отдаёт время как «10:00:00», в странице работаем с «10:00».
+  const norm = (t, r) => (t === "appointments" ? { ...r, start_time: String(r.start_time).slice(0, 5) } : r);
+  return {
+    async init() {
+      const { data } = await sb.auth.getSession();
+      return data.session ? { name: nameOf(data.session.user) } : null;
+    },
+    async signIn(email, password) {
+      const { data, error } = await sb.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      return { name: nameOf(data.user) };
+    },
+    async signOut() { await sb.auth.signOut(); },
+    async list(t) {
+      const { data, error } = await sb.from(t).select("*").order("created_at");
+      if (error) throw error; return data.map((r) => norm(t, r));
+    },
+    async insert(t, row) {
+      const { data, error } = await sb.from(t).insert(row).select().single();
+      if (error) throw error; return norm(t, data);
+    },
+    async update(t, id, patch) {
+      const { error } = await sb.from(t).update(patch).eq("id", id);
+      if (error) throw error;
+    },
+    async remove(t, id) {
+      const { error } = await sb.from(t).delete().eq("id", id);
+      if (error) throw error;
+    },
+    subscribe(cb, onStatus) {
+      let ch = sb.channel("live");
+      for (const table of ["transactions", "appointments"]) {
+        ch = ch.on("postgres_changes", { event: "*", schema: "public", table }, (p) => {
+          if (p.eventType === "DELETE") cb({ table, kind: "delete", id: p.old.id });
+          else cb({ table, kind: "upsert", row: norm(table, p.new) });
+        });
+      }
+      ch.subscribe((s) => onStatus(s === "SUBSCRIBED"));
+    },
+  };
+}
+
+const api = demo ? localApi() : supaApi();
+const T = "transactions", A = "appointments";
+
+/* ---------- состояние ---------- */
+let user = null;
+let rows = [];
+let appts = [];
+const els = new Map();
+const fmt = new Intl.NumberFormat("ru-RU", { style: "currency", currency: cfg.currency || "RUB", minimumFractionDigits: 0, maximumFractionDigits: 2 });
+const fmtNum = (n) => new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 2 }).format(n);
+const parseAmount = (s) => { const n = parseFloat(String(s).replace(/\s/g, "").replace(",", ".")); return Number.isFinite(n) && n >= 0 ? Math.round(n * 100) / 100 : null; };
+const monthOf = (d) => d.slice(0, 7);
+const monthName = (m) => new Date(m + "-01T00:00").toLocaleDateString("ru-RU", { month: "long", year: "numeric" });
+
+function toast(msg) {
+  const t = $("toast"); t.textContent = msg; t.hidden = false;
+  clearTimeout(toast.t); toast.t = setTimeout(() => (t.hidden = true), 3500);
+}
+
+/* ---------- фильтры и итоги ---------- */
+function filtered() {
+  const m = $("monthSel").value, t = $("typeSel").value, q = $("search").value.trim().toLowerCase();
+  return rows
+    .filter((r) => (!m || monthOf(r.date) === m) && (!t || r.type === t) &&
+      (!q || (r.category + " " + r.comment).toLowerCase().includes(q)))
+    .sort((a, b) => b.date.localeCompare(a.date) || (b.created_at || "").localeCompare(a.created_at || ""));
+}
+
+let monthTouched = false;
+function refreshMonths() {
+  const sel = $("monthSel"), prev = monthTouched ? sel.value : monthOf(today());
+  const months = [...new Set([monthOf(today()), ...rows.map((r) => monthOf(r.date))])].sort().reverse();
+  sel.innerHTML = "";
+  sel.append(new Option("Всё время", ""));
+  months.forEach((m) => sel.append(new Option(monthName(m), m)));
+  sel.value = [...sel.options].some((o) => o.value === prev) ? prev : "";
+}
+
+// Список категорий зависит от типа. Старое значение вне списка остаётся в списке, чтобы не потеряться.
+function setCatOptions(sel, type, current) {
+  const list = CATS[type].slice();
+  if (current && !list.includes(current)) list.push(current);
+  const key = type + "|" + list.join("|");
+  if (sel.dataset.opts !== key) {
+    sel.replaceChildren(new Option("Категория", ""), ...list.map((c) => new Option(c, c)));
+    sel.dataset.opts = key;
+  }
+  sel.value = current || "";
+}
+
+function renderSummary(list) {
+  const sum = (t) => list.filter((r) => r.type === t).reduce((s, r) => s + Number(r.amount), 0);
+  const inc = sum("income"), exp = sum("expense");
+  $("sumInc").textContent = fmt.format(inc);
+  $("sumExp").textContent = fmt.format(exp);
+  $("sumBal").textContent = fmt.format(inc - exp);
+  $("sumBal").style.color = inc - exp < 0 ? "var(--expense)" : "var(--income)";
+  const byCat = {};
+  list.filter((r) => r.type === "expense").forEach((r) => { const k = r.category || "Без категории"; byCat[k] = (byCat[k] || 0) + Number(r.amount); });
+  const entries = Object.entries(byCat).sort((a, b) => b[1] - a[1]);
+  $("catsBox").hidden = !entries.length;
+  $("catsList").replaceChildren(...entries.map(([k, v]) => {
+    const d = document.createElement("div"); d.className = "cat";
+    const bar = document.createElement("div"); bar.className = "bar";
+    const fill = document.createElement("i"); fill.style.width = (v / entries[0][1]) * 100 + "%"; bar.append(fill);
+    const a = document.createElement("span"), b = document.createElement("span");
+    a.textContent = k; b.textContent = fmt.format(v);
+    d.append(a, bar, b); return d;
+  }));
+}
+
+/* ---------- строки таблицы ---------- */
+function makeRow(id) {
+  const el = document.createElement("div");
+  el.className = "row"; el.dataset.id = id;
+  el.innerHTML = `<input data-f="date" type="date" aria-label="Дата">
+    <select data-f="type" class="type" aria-label="Тип"><option value="income">Доход</option><option value="expense">Расход</option></select>
+    <select data-f="category" aria-label="Категория"></select>
+    <input data-f="amount" class="amt" inputmode="decimal" placeholder="Сумма" aria-label="Сумма">
+    <input data-f="comment" placeholder="Комментарий" aria-label="Комментарий">
+    <span class="who"></span>
+    <button class="del" title="Удалить" aria-label="Удалить">✕</button>`;
+  el.addEventListener("change", (e) => commit(id, e.target));
+  el.addEventListener("keydown", (e) => { if (e.key === "Enter" && e.target.tagName === "INPUT") e.target.blur(); });
+  el.addEventListener("focusin", (e) => { if (e.target.dataset.f === "amount") { const r = rows.find((x) => x.id === id); if (r) e.target.value = String(r.amount).replace(".", ","); e.target.select(); } });
+  el.addEventListener("focusout", (e) => { if (e.target.dataset.f === "amount") { const r = rows.find((x) => x.id === id); if (r) e.target.value = fmtNum(r.amount); } });
+  el.querySelector(".del").addEventListener("click", () => removeRow(id));
+  return el;
+}
+
+function fillRow(el, r) {
+  el.className = "row " + r.type;
+  for (const f of ["date", "type", "category", "amount", "comment"]) {
+    const input = el.querySelector(`[data-f="${f}"]`);
+    if (input === document.activeElement) continue;
+    if (f === "category") setCatOptions(input, r.type, r.category);
+    else input.value = f === "amount" ? fmtNum(r.amount) : r[f];
+  }
+  el.querySelector(".who").textContent = r.author || "";
+}
+
+function render() {
+  refreshMonths();
+  const list = filtered();
+  renderSummary(list);
+  const box = $("list"), seen = new Set();
+  list.forEach((r, i) => {
+    seen.add(r.id);
+    let el = els.get(r.id);
+    if (!el) { el = makeRow(r.id); els.set(r.id, el); }
+    fillRow(el, r);
+    if (box.children[i] !== el) box.insertBefore(el, box.children[i] || null);
+  });
+  for (const [id, el] of els) if (!seen.has(id)) { el.remove(); els.delete(id); }
+  $("empty").hidden = list.length > 0;
+}
+
+/* ---------- действия ---------- */
+async function commit(id, input) {
+  const r = rows.find((x) => x.id === id); if (!r) return;
+  const f = input.dataset.f; let v = input.value;
+  if (f === "amount") {
+    v = parseAmount(v);
+    if (v === null) { toast("Сумма должна быть числом"); input.value = fmtNum(r.amount); return; }
+  } else if (f === "date" && !v) { input.value = r.date; return; }
+  else if (f !== "type") v = v.trim();
+  if (r[f] === v) return;
+  const patch = { [f]: v };
+  // При смене типа категория из другого списка сбрасывается.
+  if (f === "type" && !CATS[v].includes(r.category)) patch.category = "";
+  const old = {}; for (const k in patch) old[k] = r[k];
+  Object.assign(r, patch); render();
+  try { await api.update(T, id, patch); }
+  catch (e) { Object.assign(r, old); render(); toast("Не удалось сохранить: " + (e.message || e)); }
+}
+
+async function removeRow(id) {
+  const r = rows.find((x) => x.id === id); if (!r) return;
+  if (!confirm(`Удалить запись «${r.category || "без категории"}» на ${fmtNum(r.amount)}?`)) return;
+  const prev = rows; rows = rows.filter((x) => x.id !== id); render();
+  try { await api.remove(T, id); } catch (e) { rows = prev; render(); toast("Не удалось удалить: " + (e.message || e)); }
+}
+
+$("aType").addEventListener("change", () => setCatOptions($("aCat"), $("aType").value, ""));
+
+$("addForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const amount = parseAmount($("aAmt").value);
+  if (amount === null || amount === 0) { toast("Введите сумму"); $("aAmt").focus(); return; }
+  const row = { date: $("aDate").value || today(), type: $("aType").value, category: $("aCat").value.trim(), amount, comment: $("aCom").value.trim(), author: user.name };
+  try {
+    const saved = await api.insert(T, row);
+    if (!rows.some((r) => r.id === saved.id)) rows.push(saved);
+    $("aAmt").value = ""; $("aCom").value = ""; $("aCat").value = "";
+    $("aCat").focus(); render();
+  } catch (err) { toast("Не удалось добавить: " + (err.message || err)); }
+});
+
+$("exportBtn").addEventListener("click", () => {
+  const esc = (s) => `"${String(s).replace(/"/g, '""')}"`;
+  const lines = [["Дата", "Тип", "Категория", "Сумма", "Комментарий", "Кто"].join(";")];
+  filtered().slice().reverse().forEach((r) => lines.push([r.date, r.type === "income" ? "Доход" : "Расход", esc(r.category), String(r.amount).replace(".", ","), esc(r.comment), esc(r.author)].join(";")));
+  const blob = new Blob(["﻿" + lines.join("\r\n")], { type: "text/csv;charset=utf-8" });
+  const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(blob), download: `budget-${$("monthSel").value || "all"}.csv` });
+  a.click(); URL.revokeObjectURL(a.href);
+});
+
+$("monthSel").addEventListener("change", () => { monthTouched = true; render(); });
+$("typeSel").addEventListener("change", render);
+$("search").addEventListener("input", render);
+
+/* ---------- календарь записей ---------- */
+const STATUS = { booked: "Записана", done: "Выполнено", cancelled: "Отменено" };
+const pad = (n) => String(n).padStart(2, "0");
+const ymd = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const toMin = (t) => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
+const endTime = (a) => { const e = toMin(a.start_time) + a.duration_min; return `${pad(Math.floor(e / 60) % 24)}:${pad(e % 60)}`; };
+const byTime = (a, b) => a.start_time.localeCompare(b.start_time);
+const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+const dayLabel = (d) => cap(new Date(d + "T00:00").toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" }));
+const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text !== undefined) n.textContent = text; return n; };
+
+let cal = { y: new Date().getFullYear(), m: new Date().getMonth() };
+let selDay = today();
+
+function gotoDay(key) { const d = new Date(key + "T00:00"); selDay = key; cal = { y: d.getFullYear(), m: d.getMonth() }; }
+
+function renderCal() {
+  $("calTitle").textContent = cap(new Date(cal.y, cal.m, 1).toLocaleDateString("ru-RU", { month: "long", year: "numeric" }).replace(/ г\.$/, ""));
+  const offset = (new Date(cal.y, cal.m, 1).getDay() + 6) % 7;
+  const byDate = {};
+  appts.forEach((a) => (byDate[a.date] ||= []).push(a));
+  const nodes = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"].map((n) => el("div", "dow", n));
+  const todayKey = today();
+  for (let i = 0; i < 42; i++) {
+    const d = new Date(cal.y, cal.m, 1 - offset + i), key = ymd(d);
+    const cell = el("div", "cell");
+    if (d.getMonth() !== cal.m) cell.classList.add("out");
+    if (d.getDay() === 0 || d.getDay() === 6) cell.classList.add("we");
+    if (key === selDay) cell.classList.add("sel");
+    if (key === todayKey) cell.classList.add("today");
+    cell.append(el("span", "num", d.getDate()));
+    const list = (byDate[key] || []).sort(byTime);
+    list.slice(0, 3).forEach((a) => {
+      const chip = el("button", "chip " + a.status, `${a.start_time} ${a.client || "без имени"}`);
+      chip.addEventListener("click", (e) => { e.stopPropagation(); selDay = key; openDlg(a); });
+      cell.append(chip);
+    });
+    if (list.length > 3) cell.append(el("div", "more", `+${list.length - 3} ещё`));
+    if (list.length) cell.append(" ", el("span", "cnt", list.length));
+    cell.addEventListener("click", () => { gotoDay(key); renderCal(); });
+    nodes.push(cell);
+  }
+  $("calGrid").replaceChildren(...nodes);
+
+  const prefix = `${cal.y}-${pad(cal.m + 1)}`;
+  const active = appts.filter((a) => a.date.startsWith(prefix) && a.status !== "cancelled");
+  const total = active.reduce((s, a) => s + Number(a.price), 0);
+  $("calSum").textContent = active.length ? `В месяце: ${active.length} зап. на ${fmt.format(total)}` : "В этом месяце записей нет";
+  renderDay();
+}
+
+function renderDay() {
+  const list = apptsOn(selDay);
+  const head = el("div", "dayhead");
+  const add = el("button", "btn primary", "+ Запись");
+  add.addEventListener("click", () => openDlg(null));
+  head.append(el("h3", "", dayLabel(selDay)), add);
+  const items = list.map((a) => {
+    const row = el("button", "appt " + a.status);
+    const mid = el("div"), right = el("div");
+    mid.append(el("b", "", a.client || "без имени"), el("small", "", [a.service, a.place, a.phone].filter(Boolean).join(" · ")));
+    right.append(el("span", "st " + a.status, STATUS[a.status]));
+    if (Number(a.price)) right.append(el("small", "", fmt.format(a.price) + (Number(a.prepaid) ? `, предоплата ${fmtNum(a.prepaid)}` : "")));
+    row.append(el("span", "t", `${a.start_time}–${endTime(a)}`), mid, right);
+    row.addEventListener("click", () => openDlg(a));
+    return row;
+  });
+  if (!items.length) items.push(el("div", "empty", "На этот день записей нет."));
+  $("dayPanel").replaceChildren(head, ...items);
+}
+const apptsOn = (d) => appts.filter((a) => a.date === d).sort(byTime);
+
+$("calPrev").addEventListener("click", () => { cal = { y: cal.y, m: cal.m - 1 }; if (cal.m < 0) cal = { y: cal.y - 1, m: 11 }; renderCal(); });
+$("calNext").addEventListener("click", () => { cal = { y: cal.y, m: cal.m + 1 }; if (cal.m > 11) cal = { y: cal.y + 1, m: 0 }; renderCal(); });
+$("calToday").addEventListener("click", () => { gotoDay(today()); renderCal(); });
+
+let editing = null;
+function openDlg(a) {
+  editing = a;
+  const v = a || { date: selDay, start_time: "10:00", duration_min: 120, status: "booked", client: "", phone: "", service: "", place: "", price: 0, prepaid: 0, note: "" };
+  $("dTitle").textContent = a ? "Запись" : "Новая запись";
+  $("dDelete").hidden = !a;
+  $("dErr").textContent = "";
+  $("dDate").value = v.date; $("dTime").value = v.start_time; $("dDur").value = v.duration_min; $("dStatus").value = v.status;
+  $("dClient").value = v.client; $("dPhone").value = v.phone; $("dService").value = v.service;
+  const place = $("dPlace");
+  place.querySelectorAll("[data-extra]").forEach((o) => o.remove());
+  if (v.place && ![...place.options].some((o) => o.value === v.place)) { const o = new Option(v.place, v.place); o.dataset.extra = "1"; place.append(o); }
+  place.value = v.place;
+  $("dPrice").value = Number(v.price) ? String(v.price).replace(".", ",") : "";
+  $("dPrepaid").value = Number(v.prepaid) ? String(v.prepaid).replace(".", ",") : "";
+  $("dNote").value = v.note;
+  $("apptDlg").showModal();
+}
+
+$("apptForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const price = parseAmount($("dPrice").value || "0"), prepaid = parseAmount($("dPrepaid").value || "0");
+  if (price === null || prepaid === null) { $("dErr").textContent = "Стоимость и предоплата должны быть числами"; return; }
+  const row = {
+    date: $("dDate").value, start_time: $("dTime").value, duration_min: parseInt($("dDur").value, 10) || 60,
+    status: $("dStatus").value, client: $("dClient").value.trim(), phone: $("dPhone").value.trim(),
+    service: $("dService").value.trim(), place: $("dPlace").value.trim(), price, prepaid, note: $("dNote").value.trim(),
+  };
+  if (row.status !== "cancelled") {
+    const s = toMin(row.start_time), end = s + row.duration_min;
+    const clash = appts.find((o) => o.id !== editing?.id && o.date === row.date && o.status !== "cancelled" && toMin(o.start_time) < end && s < toMin(o.start_time) + o.duration_min);
+    if (clash && !confirm(`Пересекается с записью ${clash.start_time}–${endTime(clash)} (${clash.client || "без имени"}). Всё равно сохранить?`)) return;
+  }
+  try {
+    if (editing) { await api.update(A, editing.id, row); Object.assign(editing, row); }
+    else { const saved = await api.insert(A, row); if (!appts.some((x) => x.id === saved.id)) appts.push(saved); }
+    gotoDay(row.date); $("apptDlg").close(); renderCal();
+  } catch (err) { $("dErr").textContent = "Не удалось сохранить: " + (err.message || err); }
+});
+
+$("dDelete").addEventListener("click", async () => {
+  if (!editing || !confirm(`Удалить запись «${editing.client || "без имени"}» ${editing.date} в ${editing.start_time}?`)) return;
+  try { await api.remove(A, editing.id); appts = appts.filter((x) => x.id !== editing.id); $("apptDlg").close(); renderCal(); }
+  catch (err) { $("dErr").textContent = "Не удалось удалить: " + (err.message || err); }
+});
+$("dCancel").addEventListener("click", () => $("apptDlg").close());
+$("apptDlg").addEventListener("click", (e) => { if (e.target === $("apptDlg")) $("apptDlg").close(); });
+
+/* ---------- запуск ---------- */
+function onLive(ev) {
+  if (ev.kind === "reload") { loadAll().then(renderAll); return; }
+  const list = ev.table === A ? appts : rows;
+  if (ev.kind === "delete") { const i = list.findIndex((r) => r.id === ev.id); if (i >= 0) list.splice(i, 1); }
+  else { const i = list.findIndex((r) => r.id === ev.row.id); if (i >= 0) list[i] = ev.row; else list.push(ev.row); }
+  renderAll();
+}
+
+async function loadAll() {
+  try { [rows, appts] = await Promise.all([api.list(T), api.list(A)]); }
+  catch (e) { toast("Не удалось загрузить данные: " + (e.message || e)); }
+}
+
+function renderAll() { render(); renderCal(); }
+
+function showTab(name) {
+  document.querySelectorAll(".tab").forEach((b) => b.classList.toggle("on", b.dataset.tab === name));
+  $("calView").hidden = name !== "cal";
+  $("financeView").hidden = name !== "fin";
+  $("exportBtn").hidden = name !== "fin";
+  try { localStorage.setItem("family-budget-tab", name); } catch {}
+}
+document.querySelectorAll(".tab").forEach((b) => b.addEventListener("click", () => showTab(b.dataset.tab)));
+
+async function openApp() {
+  $("loginView").hidden = true; $("appView").hidden = false;
+  $("demoBanner").hidden = !demo;
+  $("aDate").value = today();
+  setCatOptions($("aCat"), $("aType").value, "");
+  let tab = "cal"; try { tab = localStorage.getItem("family-budget-tab") || "cal"; } catch {}
+  showTab(tab);
+  await loadAll();
+  renderAll();
+  api.subscribe(onLive, (on) => { $("status").classList.toggle("on", on); $("statusText").textContent = on ? `${user.name} · онлайн` : "нет связи"; });
+}
+
+$("loginForm").addEventListener("submit", async (e) => {
+  e.preventDefault(); $("loginErr").textContent = "";
+  try { user = await api.signIn($("loginEmail").value.trim(), $("loginPass").value); await openApp(); }
+  catch (err) { $("loginErr").textContent = "Неверная почта или пароль"; }
+});
+$("logoutBtn").addEventListener("click", async () => { await api.signOut(); location.reload(); });
+
+(async () => {
+  try { user = await api.init(); } catch { user = null; }
+  if (user) openApp(); else $("loginView").hidden = false;
+})();
+})();
+</script>
+</body>
+</html>
