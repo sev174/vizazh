@@ -1,0 +1,563 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Алко-календарь</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+// Данные проекта Supabase: те же, что в index.html.
+// Если оставить поля пустыми, страница работает в демо-режиме (данные только в этом браузере).
+window.APP_CONFIG = {
+  supabaseUrl: "https://jjgnmxuvbveckxgfsckp.supabase.co",
+  supabaseAnonKey: "sb_publishable_OkQ6X6miPnLYjS6udHh5Uw_rVL6owx7",
+  currency: "RUB",
+};
+</script>
+<style>
+:root {
+  --bg: #f2f7f6; --glow: #cfe7e3; --surface: #fff; --text: #14292b; --muted: #6a8386; --line: #d9e5e3;
+  --accent: #0b5f60; --accent-2: #1f8f8c; --accent-soft: #e0f0ee; --gold: #b8955a; --on-accent: #fff;
+  --income: #2e8b57; --income-bg: #e2f3e9; --expense: #c2563f; --expense-bg: #fbeae5;
+  --shadow: 0 1px 2px rgba(10, 50, 52, .05), 0 8px 24px rgba(10, 50, 52, .08);
+  --serif: "Cormorant Garamond", Georgia, "Times New Roman", serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0c1819; --glow: #11393b; --surface: #132527; --text: #e6f1ef; --muted: #8ea9ab; --line: #233a3c;
+    --accent: #3fc4bd; --accent-2: #66d8d1; --accent-soft: #16393b; --gold: #d8b574; --on-accent: #062524;
+    --income: #5fd09a; --income-bg: #173326; --expense: #f08a73; --expense-bg: #3b221e;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px rgba(0, 0, 0, .25);
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; color: var(--text); font: 15px/1.45 "Manrope", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: radial-gradient(900px 420px at 90% -8%, var(--glow), transparent 65%), var(--bg); background-attachment: fixed; min-height: 100vh; }
+.wrap { max-width: 1120px; margin: 0 auto; padding: 20px 16px 40px; }
+header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+.brand { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
+.logo { width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; flex: none;
+  background: linear-gradient(135deg, var(--accent-2), var(--accent)); box-shadow: 0 0 0 3px var(--surface), 0 0 0 4px var(--gold), 0 6px 16px rgba(11, 95, 96, .3); }
+.logo svg { width: 22px; height: 22px; fill: var(--on-accent); }
+h1 { font-family: var(--serif); font-size: 30px; line-height: 1; margin: 0; font-weight: 700; letter-spacing: .01em; }
+h1 small { display: block; font-family: "Manrope", sans-serif; font-size: 12px; font-weight: 500; letter-spacing: .14em; text-transform: uppercase; color: var(--gold); margin-top: 4px; }
+.status { font-size: 13px; color: var(--muted); }
+.status i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); margin-right: 6px; }
+.status.on i { background: var(--income); box-shadow: 0 0 0 3px var(--income-bg); }
+button, select, input, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+a.btn { text-decoration: none; display: inline-block; }
+.btn { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 8px 16px; transition: border-color .15s, box-shadow .15s, transform .05s; }
+.btn:hover { border-color: var(--accent-2); }
+.btn:active { transform: translateY(1px); }
+.btn.primary { background: linear-gradient(135deg, var(--accent-2), var(--accent)); border-color: transparent; color: var(--on-accent); font-weight: 600; box-shadow: 0 4px 12px rgba(11, 95, 96, .28); }
+.btn.danger { color: var(--expense); }
+.banner { background: var(--accent-soft); border-radius: 12px; padding: 9px 14px; margin-bottom: 14px; font-size: 14px; }
+
+.people { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin-bottom: 18px; }
+.pcard { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px 18px; box-shadow: var(--shadow); position: relative; overflow: hidden; }
+.pcard::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 5px; background: var(--pc, var(--gold)); }
+.pcard .name { font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--pc, var(--gold)); flex: none; }
+.pcard .big { display: flex; align-items: baseline; gap: 10px; margin: 4px 0 6px; }
+.pcard .big b { font-family: var(--serif); font-size: 56px; line-height: 1; font-variant-numeric: tabular-nums; color: var(--accent); }
+.pcard .big span { color: var(--muted); }
+.pcard .meta { font-size: 13px; color: var(--muted); display: grid; gap: 2px; }
+.pcard .meta b { color: var(--text); font-weight: 600; }
+.empty { padding: 24px; text-align: center; color: var(--muted); }
+
+.calbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.calbar h2 { font-family: var(--serif); font-size: 26px; font-weight: 700; margin: 0 6px; min-width: 170px; text-align: center; }
+.calsum { margin-left: auto; color: var(--muted); font-size: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; }
+.cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); background: var(--surface); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; box-shadow: var(--shadow); }
+.cal .dow { padding: 9px 10px; font-size: 11px; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: .1em; background: var(--accent-soft); }
+.cal .cell { min-height: 92px; padding: 6px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); cursor: pointer; overflow: hidden; transition: background .12s; }
+.cal .cell:hover { background: var(--accent-soft); }
+.cal .cell:nth-child(7n) { border-right: 0; }
+.cal .cell.out { opacity: .45; }
+.cal .cell.we .num { color: var(--expense); }
+.cal .cell.sel { box-shadow: inset 0 0 0 2px var(--accent-2); background: var(--accent-soft); }
+.num { font-size: 13px; font-weight: 600; display: inline-block; min-width: 24px; height: 24px; line-height: 24px; text-align: center; margin-bottom: 3px; }
+.cal .cell.today .num { background: linear-gradient(135deg, var(--accent-2), var(--accent)); color: var(--on-accent); border-radius: 50%; }
+.dots { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
+.dots .dot { width: 12px; height: 12px; }
+.camt { font-size: 12px; color: var(--muted); margin-top: 3px; font-variant-numeric: tabular-nums; }
+
+.day, .manage { margin-top: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 14px 18px; box-shadow: var(--shadow); }
+.dayhead { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.dayhead h3, .manage h2 { margin: 0; font-family: var(--serif); font-size: 24px; }
+.manage h2 { font-size: 20px; margin-bottom: 4px; }
+.manage p { margin: 0 0 10px; color: var(--muted); font-size: 13px; }
+.entry { display: grid; grid-template-columns: 150px 1fr auto; gap: 12px; align-items: center; width: 100%; text-align: left; border: 0; border-top: 1px solid var(--line); background: transparent; padding: 11px 4px; border-radius: 0; }
+.entry:hover { background: var(--accent-soft); }
+.entry small { color: var(--muted); display: block; }
+.entry .who { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.entry .sum { font-variant-numeric: tabular-nums; font-weight: 600; text-align: right; }
+.sober { border-top: 1px solid var(--line); padding: 10px 4px 2px; color: var(--income); font-size: 14px; }
+
+.prow { display: grid; grid-template-columns: 1fr 170px 40px; gap: 8px; margin-bottom: 8px; align-items: center; }
+.prow input { border: 1px solid var(--line); background: var(--bg); border-radius: 10px; padding: 9px 11px; min-width: 0; width: 100%; }
+.prow input:focus { outline: none; border-color: var(--accent-2); box-shadow: 0 0 0 3px var(--accent-soft); }
+.prow .del { border: 0; background: transparent; color: var(--muted); }
+.prow .del:hover { color: var(--expense); }
+.prow.add { grid-template-columns: 1fr 170px auto; margin-top: 12px; }
+
+dialog { border: 1px solid var(--line); border-radius: 20px; padding: 22px; width: min(480px, calc(100vw - 24px)); background: var(--surface); color: var(--text); box-shadow: 0 20px 60px rgba(5, 35, 36, .35); }
+dialog::backdrop { background: rgba(5, 25, 26, .55); backdrop-filter: blur(2px); }
+dialog h3 { font-family: var(--serif); font-size: 26px; margin: 0 0 12px; }
+dialog label { display: block; font-size: 12px; font-weight: 600; letter-spacing: .04em; color: var(--muted); margin-bottom: 10px; }
+dialog input, dialog select, dialog textarea { display: block; width: 100%; margin-top: 4px; border: 1px solid var(--line); background: var(--bg); border-radius: 10px; padding: 9px 11px; font: inherit; color: var(--text); }
+dialog input:focus, dialog select:focus, dialog textarea:focus { outline: none; border-color: var(--accent-2); box-shadow: 0 0 0 3px var(--accent-soft); }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+.dlgbtns { display: flex; gap: 8px; margin-top: 8px; }
+
+.login { max-width: 360px; margin: 12vh auto; background: var(--surface); border: 1px solid var(--line); border-radius: 22px; padding: 30px 26px; box-shadow: var(--shadow); text-align: center; }
+.login .brand { flex-direction: column; margin-bottom: 18px; }
+.login input { width: 100%; border: 1px solid var(--line); background: var(--bg); border-radius: 12px; padding: 11px 13px; margin-bottom: 10px; }
+.login input:focus { outline: none; border-color: var(--accent-2); box-shadow: 0 0 0 3px var(--accent-soft); }
+.login .btn { width: 100%; padding: 11px; }
+.err { color: var(--expense); font-size: 14px; min-height: 20px; margin-bottom: 6px; }
+.toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--expense); color: #fff; padding: 10px 18px; border-radius: 999px; z-index: 5; box-shadow: var(--shadow); }
+[hidden] { display: none !important; }
+
+@media (max-width: 760px) {
+  h1 { font-size: 26px; }
+  header .brand { flex-basis: 100%; }
+  header .status { margin-right: auto; }
+  .banner { font-size: 12px; padding: 7px 11px; }
+  .pcard .big b { font-size: 46px; }
+  .calbar { gap: 6px; }
+  .calbar .btn { padding: 6px 10px; font-size: 13px; flex: none; }
+  .calbar h2 { font-size: 17px; min-width: 0; flex: 1; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .calsum { margin-left: 0; width: 100%; text-align: center; order: 5; }
+  .cal .cell { min-height: 56px; padding: 3px; text-align: center; }
+  .cal .dots { justify-content: center; }
+  .cal .camt { display: none; }
+  .dayhead h3 { font-size: 20px; }
+  .dayhead .btn { white-space: nowrap; padding: 7px 13px; flex: none; }
+  .entry { grid-template-columns: 1fr auto; }
+  .entry .who { grid-column: 1 / -1; }
+  .prow, .prow.add { grid-template-columns: 1fr 1fr; }
+  .prow .del { text-align: right; padding-right: 18px; }
+  .prow.add .btn { grid-column: 1 / -1; }
+}
+</style>
+</head>
+<body>
+
+<div id="loginView" class="login" hidden>
+  <div class="brand">
+    <span class="logo" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2l2.2 6.3L21 10l-5.2 4 1.8 6.6L12 17l-5.6 3.6L8.2 14 3 10l6.8-1.7z"/></svg></span>
+    <h1>Алко-календарь<small>учёт и счётчик</small></h1>
+  </div>
+  <form id="loginForm">
+    <input id="loginEmail" type="email" placeholder="Почта" autocomplete="username" required>
+    <input id="loginPass" type="password" placeholder="Пароль" autocomplete="current-password" required>
+    <div class="err" id="loginErr"></div>
+    <button class="btn primary" type="submit">Войти</button>
+  </form>
+</div>
+
+<div id="appView" class="wrap" hidden>
+  <header>
+    <div class="brand">
+      <span class="logo" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2l2.2 6.3L21 10l-5.2 4 1.8 6.6L12 17l-5.6 3.6L8.2 14 3 10l6.8-1.7z"/></svg></span>
+      <h1>Алко-календарь<small>учёт и счётчик</small></h1>
+    </div>
+    <span class="status" id="status"><i></i><span id="statusText"></span></span>
+    <a class="btn" href="./">Записи и бюджет</a>
+    <button class="btn" id="logoutBtn">Выйти</button>
+  </header>
+  <div class="banner" id="demoBanner" hidden>Демо-режим: данные хранятся только в этом браузере. Чтобы работать вдвоём, подключите Supabase (см. README.md).</div>
+
+  <section class="people" id="peopleCards"></section>
+
+  <div class="calbar">
+    <button class="btn" id="calPrev" aria-label="Предыдущий месяц">‹</button>
+    <h2 id="calTitle"></h2>
+    <button class="btn" id="calNext" aria-label="Следующий месяц">›</button>
+    <button class="btn" id="calToday">Сегодня</button>
+    <span class="calsum" id="calSum"></span>
+  </div>
+  <div class="cal" id="calGrid"></div>
+  <div class="day" id="dayPanel"></div>
+
+  <section class="manage">
+    <h2>Участники</h2>
+    <p>Счётчик идёт с указанной даты. Каждая отметка в календаре обнуляет его для этого человека.</p>
+    <div id="peopleList"></div>
+    <form class="prow add" id="addPerson" autocomplete="off">
+      <input id="pName" placeholder="Имя" aria-label="Имя" required>
+      <input id="pSince" type="date" aria-label="Считать с даты">
+      <button class="btn primary" type="submit">+ Добавить</button>
+    </form>
+  </section>
+</div>
+
+<dialog id="entryDlg">
+  <form id="entryForm" autocomplete="off">
+    <h3 id="eTitle">Новая отметка</h3>
+    <label>Кто<select id="ePerson" required></select></label>
+    <div class="grid2">
+      <label>Дата<input id="eDate" type="date" required></label>
+      <label>Потрачено<input id="eAmount" inputmode="decimal" placeholder="0"></label>
+    </div>
+    <label>Что пили<input id="eDrink" list="drinks"></label>
+    <label>Заметка<textarea id="eNote" rows="2"></textarea></label>
+    <div class="err" id="eErr"></div>
+    <div class="dlgbtns">
+      <button type="button" class="btn danger" id="eDelete">Удалить</button>
+      <span style="flex:1"></span>
+      <button type="button" class="btn" id="eCancel">Закрыть</button>
+      <button type="submit" class="btn primary">Сохранить</button>
+    </div>
+  </form>
+  <datalist id="drinks"><option value="Пиво"><option value="Вино"><option value="Шампанское"><option value="Крепкое"><option value="Коктейли"></datalist>
+</dialog>
+
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(() => {
+const cfg = window.APP_CONFIG || {};
+const demo = !cfg.supabaseUrl || !cfg.supabaseAnonKey;
+const $ = (id) => document.getElementById(id);
+const P = "alko_people", E = "alko_entries";
+const COLORS = ["#1f8f8c", "#c2563f", "#b8955a", "#6b5fb5", "#2e8b57", "#c0508a"];
+
+/* ---------- слой данных ---------- */
+function localApi() {
+  const key = (t) => "alko-demo-" + t;
+  const load = (t) => { try { return JSON.parse(localStorage.getItem(key(t))) || []; } catch { return []; } };
+  const save = (t, rows) => localStorage.setItem(key(t), JSON.stringify(rows));
+  return {
+    async init() { return { name: "Вы" }; },
+    async signIn() {}, async signOut() {},
+    async list(t) { return load(t); },
+    async insert(t, row) {
+      const r = { ...row, id: crypto.randomUUID(), created_at: new Date().toISOString() };
+      save(t, [...load(t), r]); return r;
+    },
+    async update(t, id, patch) { save(t, load(t).map((r) => (r.id === id ? { ...r, ...patch } : r))); },
+    async remove(t, id) {
+      save(t, load(t).filter((r) => r.id !== id));
+      if (t === P) save(E, load(E).filter((r) => r.person_id !== id));
+    },
+    subscribe(cb, onStatus) {
+      window.addEventListener("storage", (e) => { if (e.key && e.key.startsWith("alko-demo-")) cb({ kind: "reload" }); });
+      onStatus(true);
+    },
+  };
+}
+
+function supaApi() {
+  const sb = supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
+  const nameOf = (u) => u.user_metadata?.name || (u.email || "").split("@")[0];
+  return {
+    async init() {
+      const { data } = await sb.auth.getSession();
+      return data.session ? { name: nameOf(data.session.user) } : null;
+    },
+    async signIn(email, password) {
+      const { data, error } = await sb.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      return { name: nameOf(data.user) };
+    },
+    async signOut() { await sb.auth.signOut(); },
+    async list(t) {
+      const { data, error } = await sb.from(t).select("*").order("created_at");
+      if (error) throw error; return data;
+    },
+    async insert(t, row) {
+      const { data, error } = await sb.from(t).insert(row).select().single();
+      if (error) throw error; return data;
+    },
+    async update(t, id, patch) {
+      const { error } = await sb.from(t).update(patch).eq("id", id);
+      if (error) throw error;
+    },
+    async remove(t, id) {
+      const { error } = await sb.from(t).delete().eq("id", id);
+      if (error) throw error;
+    },
+    subscribe(cb, onStatus) {
+      let ch = sb.channel("alko-live");
+      for (const table of [P, E]) {
+        ch = ch.on("postgres_changes", { event: "*", schema: "public", table }, (p) => {
+          if (p.eventType === "DELETE") cb({ table, kind: "delete", id: p.old.id });
+          else cb({ table, kind: "upsert", row: p.new });
+        });
+      }
+      ch.subscribe((s) => onStatus(s === "SUBSCRIBED"));
+    },
+  };
+}
+
+const api = demo ? localApi() : supaApi();
+
+/* ---------- утилиты ---------- */
+const pad = (n) => String(n).padStart(2, "0");
+const ymd = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const today = () => ymd(new Date());
+const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text !== undefined) n.textContent = text; return n; };
+const dayNum = (s) => Date.UTC(+s.slice(0, 4), +s.slice(5, 7) - 1, +s.slice(8, 10)) / 86400000;
+const diff = (a, b) => Math.round(dayNum(b) - dayNum(a));
+const plural = (n, f) => { const a = n % 10, b = n % 100; return a === 1 && b !== 11 ? f[0] : a >= 2 && a <= 4 && (b < 10 || b >= 20) ? f[1] : f[2]; };
+const fmt = new Intl.NumberFormat("ru-RU", { style: "currency", currency: cfg.currency || "RUB", minimumFractionDigits: 0, maximumFractionDigits: 2 });
+const fmtDate = (s) => s.split("-").reverse().join(".");
+const parseAmount = (s) => { const n = parseFloat(String(s).replace(/\s/g, "").replace(",", ".")); return Number.isFinite(n) && n >= 0 ? Math.round(n * 100) / 100 : null; };
+const dayLabel = (d) => cap(new Date(d + "T00:00").toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" }));
+
+function toast(msg) {
+  const t = $("toast"); t.textContent = msg; t.hidden = false;
+  clearTimeout(toast.t); toast.t = setTimeout(() => (t.hidden = true), 3500);
+}
+
+/* ---------- состояние ---------- */
+let user = null;
+let people = [];
+let entries = [];
+let cal = { y: new Date().getFullYear(), m: new Date().getMonth() };
+let selDay = today();
+
+const colorOf = (id) => COLORS[Math.max(0, people.findIndex((p) => p.id === id)) % COLORS.length];
+const personById = (id) => people.find((p) => p.id === id);
+
+// Счётчик: дни с последней отметки (или с даты старта), рекорд — самый длинный промежуток между отметками.
+function stats(p) {
+  const now = today();
+  const dates = [...new Set(entries.filter((e) => e.person_id === p.id && e.date <= now).map((e) => e.date))].sort();
+  const last = dates.length ? dates[dates.length - 1] : null;
+  const base = last && last > p.since ? last : p.since;
+  const cur = Math.max(0, diff(base, now));
+  let record = cur, prev = p.since;
+  for (const d of dates) { record = Math.max(record, diff(prev, d)); prev = d; }
+  const prefix = now.slice(0, 7);
+  const month = entries.filter((e) => e.person_id === p.id && e.date.startsWith(prefix));
+  return {
+    cur, last, record,
+    monthDays: new Set(month.map((e) => e.date)).size,
+    monthSum: month.reduce((s, e) => s + Number(e.amount), 0),
+  };
+}
+
+/* ---------- счётчики ---------- */
+function renderCards() {
+  const box = $("peopleCards");
+  if (!people.length) { box.replaceChildren(el("div", "empty", "Добавьте участников внизу страницы, и здесь появятся счётчики.")); return; }
+  box.replaceChildren(...people.map((p) => {
+    const s = stats(p), card = el("div", "pcard");
+    card.style.setProperty("--pc", colorOf(p.id));
+    const name = el("div", "name"); name.append(el("span", "dot"), p.name);
+    const big = el("div", "big"); big.append(el("b", "", s.cur), el("span", "", plural(s.cur, ["день", "дня", "дней"]) + " без алкоголя"));
+    const meta = el("div", "meta");
+    const line = (label, value) => { const d = el("div"); d.append(label + ": ", Object.assign(el("b"), { textContent: value })); return d; };
+    meta.append(
+      line(s.last && s.last > p.since ? "Последний раз" : "Счёт идёт с", fmtDate(s.last && s.last > p.since ? s.last : p.since)),
+      line("Рекорд", `${s.record} ${plural(s.record, ["день", "дня", "дней"])}`),
+      line("В этом месяце", s.monthDays ? `${s.monthDays} ${plural(s.monthDays, ["день", "дня", "дней"])}, ${fmt.format(s.monthSum)}` : "без алкоголя"),
+    );
+    card.append(name, big, meta);
+    return card;
+  }));
+}
+
+/* ---------- календарь ---------- */
+function gotoDay(key) { const d = new Date(key + "T00:00"); selDay = key; cal = { y: d.getFullYear(), m: d.getMonth() }; }
+
+function renderCal() {
+  $("calTitle").textContent = cap(new Date(cal.y, cal.m, 1).toLocaleDateString("ru-RU", { month: "long", year: "numeric" }).replace(/ г\.$/, ""));
+  const offset = (new Date(cal.y, cal.m, 1).getDay() + 6) % 7;
+  const byDate = {};
+  entries.forEach((e) => (byDate[e.date] ||= []).push(e));
+  const nodes = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"].map((n) => el("div", "dow", n));
+  const todayKey = today();
+  for (let i = 0; i < 42; i++) {
+    const d = new Date(cal.y, cal.m, 1 - offset + i), key = ymd(d);
+    const cell = el("div", "cell");
+    if (d.getMonth() !== cal.m) cell.classList.add("out");
+    if (d.getDay() === 0 || d.getDay() === 6) cell.classList.add("we");
+    if (key === selDay) cell.classList.add("sel");
+    if (key === todayKey) cell.classList.add("today");
+    cell.append(el("span", "num", d.getDate()));
+    const list = byDate[key] || [];
+    if (list.length) {
+      const dots = el("div", "dots");
+      [...new Set(list.map((e) => e.person_id))].forEach((pid) => {
+        const dot = el("span", "dot"); dot.style.setProperty("--pc", colorOf(pid));
+        dot.title = personById(pid)?.name || ""; dots.append(dot);
+      });
+      cell.append(dots);
+      const sum = list.reduce((s, e) => s + Number(e.amount), 0);
+      if (sum) cell.append(el("div", "camt", fmt.format(sum)));
+    }
+    cell.addEventListener("click", () => { gotoDay(key); renderCal(); });
+    nodes.push(cell);
+  }
+  $("calGrid").replaceChildren(...nodes);
+
+  const prefix = `${cal.y}-${pad(cal.m + 1)}`;
+  const month = entries.filter((e) => e.date.startsWith(prefix));
+  const sum = month.reduce((s, e) => s + Number(e.amount), 0);
+  $("calSum").textContent = month.length ? `В месяце потрачено: ${fmt.format(sum)}` : "В этом месяце отметок нет";
+  renderDay();
+}
+
+function renderDay() {
+  const list = entries.filter((e) => e.date === selDay).sort((a, b) => (a.created_at || "").localeCompare(b.created_at || ""));
+  const head = el("div", "dayhead");
+  const add = el("button", "btn primary", "+ Отметка");
+  add.addEventListener("click", () => openDlg(null));
+  head.append(el("h3", "", dayLabel(selDay)), add);
+  const items = list.map((e) => {
+    const row = el("button", "entry");
+    const who = el("div", "who"), dot = el("span", "dot"); dot.style.setProperty("--pc", colorOf(e.person_id));
+    who.append(dot, personById(e.person_id)?.name || "—");
+    const mid = el("div");
+    mid.append(el("b", "", e.drink || "Без уточнения"));
+    if (e.note) mid.append(el("small", "", e.note));
+    row.append(who, mid, el("div", "sum", Number(e.amount) ? fmt.format(e.amount) : ""));
+    row.addEventListener("click", () => openDlg(e));
+    return row;
+  });
+  if (!items.length) items.push(el("div", "empty", "На этот день отметок нет."));
+  if (selDay <= today()) {
+    const drank = new Set(list.map((e) => e.person_id));
+    const clean = people.filter((p) => !drank.has(p.id) && selDay >= p.since).map((p) => p.name);
+    if (clean.length) items.push(el("div", "sober", "Без алкоголя: " + clean.join(", ")));
+  }
+  $("dayPanel").replaceChildren(head, ...items);
+}
+
+$("calPrev").addEventListener("click", () => { cal = cal.m ? { y: cal.y, m: cal.m - 1 } : { y: cal.y - 1, m: 11 }; renderCal(); });
+$("calNext").addEventListener("click", () => { cal = cal.m < 11 ? { y: cal.y, m: cal.m + 1 } : { y: cal.y + 1, m: 0 }; renderCal(); });
+$("calToday").addEventListener("click", () => { gotoDay(today()); renderCal(); });
+
+/* ---------- окно отметки ---------- */
+let editing = null;
+function openDlg(e) {
+  if (!people.length) { toast("Сначала добавьте участников внизу страницы"); return; }
+  editing = e;
+  let last = ""; try { last = localStorage.getItem("alko-last-person") || ""; } catch {}
+  const sel = $("ePerson");
+  sel.replaceChildren(...people.map((p) => new Option(p.name, p.id)));
+  sel.value = e ? e.person_id : (personById(last) ? last : people[0].id);
+  $("eTitle").textContent = e ? "Отметка" : "Новая отметка";
+  $("eDelete").hidden = !e;
+  $("eErr").textContent = "";
+  $("eDate").value = e ? e.date : selDay;
+  $("eAmount").value = e && Number(e.amount) ? String(e.amount).replace(".", ",") : "";
+  $("eDrink").value = e ? e.drink : "";
+  $("eNote").value = e ? e.note : "";
+  $("entryDlg").showModal();
+}
+
+$("entryForm").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const amount = parseAmount($("eAmount").value || "0");
+  if (amount === null) { $("eErr").textContent = "Сумма должна быть числом"; return; }
+  const row = { person_id: $("ePerson").value, date: $("eDate").value, amount, drink: $("eDrink").value.trim(), note: $("eNote").value.trim() };
+  try {
+    if (editing) { await api.update(E, editing.id, row); Object.assign(editing, row); }
+    else { const saved = await api.insert(E, row); if (!entries.some((x) => x.id === saved.id)) entries.push(saved); }
+    try { localStorage.setItem("alko-last-person", row.person_id); } catch {}
+    gotoDay(row.date); $("entryDlg").close(); renderAll();
+  } catch (err) { $("eErr").textContent = "Не удалось сохранить: " + (err.message || err); }
+});
+
+$("eDelete").addEventListener("click", async () => {
+  if (!editing || !confirm(`Удалить отметку ${fmtDate(editing.date)} (${personById(editing.person_id)?.name || ""})?`)) return;
+  try { await api.remove(E, editing.id); entries = entries.filter((x) => x.id !== editing.id); $("entryDlg").close(); renderAll(); }
+  catch (err) { $("eErr").textContent = "Не удалось удалить: " + (err.message || err); }
+});
+$("eCancel").addEventListener("click", () => $("entryDlg").close());
+$("entryDlg").addEventListener("click", (ev) => { if (ev.target === $("entryDlg")) $("entryDlg").close(); });
+
+/* ---------- участники ---------- */
+function renderPeople() {
+  const box = $("peopleList");
+  if (box.contains(document.activeElement)) return;
+  box.replaceChildren(...people.map((p) => {
+    const row = el("div", "prow");
+    const name = el("input"), since = el("input"), del = el("button", "del", "✕");
+    name.value = p.name; name.setAttribute("aria-label", "Имя");
+    since.type = "date"; since.value = p.since; since.setAttribute("aria-label", "Считать с даты");
+    del.title = "Удалить"; del.type = "button";
+    name.addEventListener("change", () => updatePerson(p, { name: name.value.trim() || p.name }));
+    since.addEventListener("change", () => since.value && updatePerson(p, { since: since.value }));
+    del.addEventListener("click", () => removePerson(p));
+    row.append(name, since, del);
+    return row;
+  }));
+}
+
+async function updatePerson(p, patch) {
+  const old = { ...p }; Object.assign(p, patch); renderAll();
+  try { await api.update(P, p.id, patch); } catch (e) { Object.assign(p, old); renderAll(); toast("Не удалось сохранить: " + (e.message || e)); }
+}
+
+async function removePerson(p) {
+  const n = entries.filter((e) => e.person_id === p.id).length;
+  if (!confirm(`Удалить участника «${p.name}» и все его отметки (${n})? Это нельзя отменить.`)) return;
+  try {
+    await api.remove(P, p.id);
+    people = people.filter((x) => x.id !== p.id); entries = entries.filter((e) => e.person_id !== p.id); renderAll();
+  } catch (e) { toast("Не удалось удалить: " + (e.message || e)); }
+}
+
+$("addPerson").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const name = $("pName").value.trim(); if (!name) return;
+  try {
+    const saved = await api.insert(P, { name, since: $("pSince").value || today() });
+    if (!people.some((x) => x.id === saved.id)) people.push(saved);
+    $("pName").value = ""; $("pSince").value = today(); renderAll();
+  } catch (e) { toast("Не удалось добавить: " + (e.message || e)); }
+});
+
+/* ---------- запуск ---------- */
+function renderAll() { renderCards(); renderCal(); renderPeople(); }
+
+function onLive(ev) {
+  if (ev.kind === "reload") { loadAll().then(renderAll); return; }
+  const isP = ev.table === P, list = isP ? people : entries;
+  if (ev.kind === "delete") {
+    const i = list.findIndex((r) => r.id === ev.id); if (i >= 0) list.splice(i, 1);
+    if (isP) entries = entries.filter((e) => e.person_id !== ev.id);
+  } else { const i = list.findIndex((r) => r.id === ev.row.id); if (i >= 0) list[i] = ev.row; else list.push(ev.row); }
+  renderAll();
+}
+
+async function loadAll() {
+  try { [people, entries] = await Promise.all([api.list(P), api.list(E)]); }
+  catch (e) { toast("Не удалось загрузить данные: " + (e.message || e)); }
+}
+
+async function openApp() {
+  $("loginView").hidden = true; $("appView").hidden = false;
+  $("demoBanner").hidden = !demo;
+  $("pSince").value = today();
+  await loadAll();
+  renderAll();
+  api.subscribe(onLive, (on) => { $("status").classList.toggle("on", on); $("statusText").textContent = on ? `${user.name} · онлайн` : "нет связи"; });
+}
+
+$("loginForm").addEventListener("submit", async (e) => {
+  e.preventDefault(); $("loginErr").textContent = "";
+  try { user = await api.signIn($("loginEmail").value.trim(), $("loginPass").value); await openApp(); }
+  catch (err) { $("loginErr").textContent = "Неверная почта или пароль"; }
+});
+$("logoutBtn").addEventListener("click", async () => { await api.signOut(); location.reload(); });
+
+(async () => {
+  try { user = await api.init(); } catch { user = null; }
+  if (user) openApp(); else $("loginView").hidden = false;
+})();
+})();
+</script>
+</body>
+</html>
