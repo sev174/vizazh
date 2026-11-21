@@ -56,6 +56,10 @@ button { cursor: pointer; }
 .btn.primary { background: linear-gradient(135deg, var(--accent-2), var(--accent)); border-color: transparent; color: var(--on-accent); font-weight: 600; box-shadow: 0 4px 12px rgba(11, 95, 96, .28); }
 .btn.primary:hover { box-shadow: 0 6px 16px rgba(11, 95, 96, .38); }
 .banner { background: var(--accent-soft); border-radius: 12px; padding: 9px 14px; margin-bottom: 14px; font-size: 14px; }
+.remind { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: var(--income-bg); border: 1px solid var(--income); box-shadow: 0 0 0 0 var(--income); animation: pulse 2s infinite; }
+.remind span { flex: 1; min-width: 200px; }
+.remind .btn { flex: none; }
+@keyframes pulse { 0%, 100% { box-shadow: 0 0 0 0 transparent; } 50% { box-shadow: 0 0 0 4px var(--income-bg); } }
 
 .tabs { display: inline-flex; gap: 4px; padding: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: 999px; margin-bottom: 18px; box-shadow: var(--shadow); }
 .tab { border: 0; background: transparent; padding: 8px 20px; border-radius: 999px; color: var(--muted); font-weight: 500; }
@@ -214,6 +218,7 @@ dialog input:focus, dialog select:focus, dialog textarea:focus { outline: none; 
     <button class="btn" id="logoutBtn">Выйти</button>
   </header>
   <div class="banner" id="demoBanner" hidden>Демо-режим: данные хранятся только в этом браузере. Чтобы работать вдвоём, подключите Supabase (см. README.md).</div>
+  <div class="banner remind" id="remindBanner" hidden><span id="remindText"></span><button class="btn primary" id="remindBtn">Отметить</button></div>
 
   <nav class="tabs">
     <button class="tab" data-tab="cal">Записи</button>
@@ -621,6 +626,58 @@ function renderDay() {
 }
 const apptsOn = (d) => appts.filter((a) => a.date === d).sort(byTime);
 
+/* ---------- напоминание о прошедших записях ---------- */
+// Записи со статусом «Записана», время которых уже прошло (вчера и раньше — все, сегодня — после окончания).
+function pendingDone() {
+  const t = today(), now = new Date(), nowMin = now.getHours() * 60 + now.getMinutes();
+  return appts
+    .filter((a) => a.status === "booked" && (a.date < t || (a.date === t && toMin(a.start_time) + a.duration_min <= nowMin)))
+    .sort((a, b) => a.date.localeCompare(b.date) || byTime(a, b));
+}
+
+function renderRemind() {
+  const p = pendingDone();
+  $("remindBanner").hidden = !p.length;
+  if (p.length) $("remindText").textContent = `${p.length} зап. без отметки — время уже прошло. Отметить, как прошло?`;
+}
+
+async function reviewPending() {
+  for (const a of pendingDone()) {
+    const when = new Date(a.date + "T00:00").toLocaleDateString("ru-RU", { day: "numeric", month: "long" });
+    const label = `${when}, ${a.start_time}–${endTime(a)} · ${a.client || "без имени"}${a.service ? " · " + a.service : ""}`;
+    if (!confirm(`Запись прошла?\n\n${label}${Number(a.price) ? "\nСтоимость: " + fmt.format(a.price) : ""}`)) {
+      if (confirm(`Отменить запись?\n\n${label}`)) {
+        try { await api.update(A, a.id, { status: "cancelled" }); a.status = "cancelled"; renderAll(); }
+        catch (err) { toast("Не удалось сохранить: " + (err.message || err)); }
+      }
+      continue;
+    }
+    // В доход идёт остаток после предоплаты. Если стоимость не указана — спрашиваем сумму.
+    let amount = Math.max(0, Number(a.price) - Number(a.prepaid || 0));
+    if (!Number(a.price)) {
+      const s = prompt(`${label}\nЗапись прошла. Какая сумма дохода? (0 — без дохода)`);
+      if (s === null) continue;
+      const v = parseAmount(s);
+      if (v === null) { toast("Сумма должна быть числом — запись пока не отмечена"); continue; }
+      amount = v;
+    }
+    try {
+      await api.update(A, a.id, { status: "done" });
+      a.status = "done";
+      if (amount > 0) {
+        const row = { date: a.date, type: "income", category: "Визаж", amount,
+          comment: `Запись ${when} ${a.start_time}: ${a.client || "без имени"}${a.service ? " · " + a.service : ""}${Number(a.prepaid) ? " (остаток после предоплаты)" : ""}`,
+          author: user.name };
+        const saved = await api.insert(T, row);
+        if (!rows.some((r) => r.id === saved.id)) rows.push(saved);
+        toast(`В доходы: ${fmt.format(amount)}`);
+      }
+      renderAll();
+    } catch (err) { toast("Не удалось сохранить: " + (err.message || err)); }
+  }
+}
+$("remindBtn").addEventListener("click", reviewPending);
+
 $("calPrev").addEventListener("click", () => { cal = { y: cal.y, m: cal.m - 1 }; if (cal.m < 0) cal = { y: cal.y - 1, m: 11 }; renderCal(); });
 $("calNext").addEventListener("click", () => { cal = { y: cal.y, m: cal.m + 1 }; if (cal.m > 11) cal = { y: cal.y + 1, m: 0 }; renderCal(); });
 $("calToday").addEventListener("click", () => { gotoDay(today()); renderCal(); });
@@ -687,7 +744,7 @@ async function loadAll() {
   catch (e) { toast("Не удалось загрузить данные: " + (e.message || e)); }
 }
 
-function renderAll() { render(); renderCal(); }
+function renderAll() { render(); renderCal(); renderRemind(); }
 
 function showTab(name) {
   document.querySelectorAll(".tab").forEach((b) => b.classList.toggle("on", b.dataset.tab === name));
